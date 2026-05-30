@@ -40,7 +40,7 @@ Mock exams must have alternating questions,
 with all 3 mock exams covering all possible question
 styles and exam scenarios.
 
-Choose questions that will be most likely come up
+Choose questions that will be the most likely come up
 in the real exam.
 
 Export created mock exams as downloadable MD files.
@@ -77,7 +77,7 @@ If you have anything to add to this archive, feel free to fork the repository an
 
 ### Disclaimer
 
-Instruction files **DO NOT** contain any informatino regarding confidential past exam documents. These instruction files do not expose any private coursework, and they are purely for educational/study purposes.
+Instruction files **DO NOT** contain any information regarding confidential past exam documents. These instruction files do not expose any private coursework, and they are purely for educational/study purposes.
 
 
 For any legal requests, you can reach me (TunahanBalci) by creating a new issue. I will be responding to created issues.
