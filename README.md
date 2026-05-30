@@ -10,6 +10,7 @@ This repository acts as an archive. It stores instructions to create mock exams 
 - Project preparation instructions
 
 ### Structure
+```
 project_folder
 ├── <course_code>
 │   ├── MIDTERM-1.md
@@ -21,7 +22,7 @@ project_folder
     ├── FINAL.md
     ├── PROJECT.md
     └── ...
-
+```
 
 ### Contribution
 
