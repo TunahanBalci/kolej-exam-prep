@@ -1,13 +1,19 @@
 # KOLEJ EXAM PREPARATION
 
+---
+
 ### Purpose
 This repository acts as an archive. It stores instructions to create mock exams that are statistically similar to the real ones, using AI. In this use case, the project contains markdown files for instructions.
+
+<br>
 
 ### Content
 - Mock exam intructions:
     - Midterm(s)
     - Final
 - Project preparation instructions
+
+<br>
 
 ### Structure
 ```
@@ -24,11 +30,15 @@ project_folder
     └── ...
 ```
 
+<br>
+
 ### Contribution
 
 _"Knowledge is power. Knowledge shared is power multiplied."_ <br>-- Robert Noyce
 
 If you have anything to add to this archive, feel free to fork the repository and create a merge request!
+
+<br>
 
 ### Disclaimer
 
