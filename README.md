@@ -42,6 +42,8 @@ styles and exam scenarios.
 
 Choose questions that will be most likely come up
 in the real exam.
+
+Export created mock exams as downloadable MD files.
 ```
 > REMINDER: Replace <Lecturer's Mail> part with the actual exam mail.
 
