@@ -5,23 +5,25 @@
 ### Purpose
 This repository acts as an archive. It stores instructions to create mock exams that are statistically similar to the real ones, using AI. In this use case, the project contains markdown files for instructions.
 
-<br>
-
-### Content
-- Mock exam intructions:
-    - Midterm(s)
-    - Final
-- Project preparation instructions
+> Content:
+>
+> - Mock exam instructions:
+>   - Midterm(s)
+>   - Final
+> - Project preparation instructions
 
 <br>
 
 ### Structure
+
+Example file order:
 ```
 project_folder
 ├── <course_code>
-│   ├── MIDTERM-1.md
-│   ├── MIDTERM-2.md
-│   ├── FINAL.md
+│   ├── MIDTERM-2_FALL2025.md
+│   ├── MIDTERM-1_SPRING2026.md
+│   ├── MIDTERM-2_FALL2025.md
+│   ├── FINAL_SPRING2026.md
 │   └── ...
 └── <course_code>
     ├── MIDTERM.md
@@ -29,6 +31,23 @@ project_folder
     ├── PROJECT.md
     └── ...
 ```
+
+<br>
+
+### Verified Instructions
+
+Contains the list of verified / tried out instructions, with their "usefulness" scores of 1 through 5, with 5 being extremely useful.
+
+> Instruction files that are not verified / tried out are not included, and they should be considered as drafts.
+
+<br>
+All verified instructions:<br><br>
+
+
+| COURSE CODE | INSTRUCTION NAME     | SCORE |
+|-------------|----------------------|-------|
+| CMPE382     | MIDTERM-2_SPRING2026 | ⭐⭐⭐⭐⭐   |
+
 
 <br>
 
