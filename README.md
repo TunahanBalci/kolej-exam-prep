@@ -14,23 +14,36 @@ This repository acts as an archive. It stores instructions to create mock exams 
 
 <br>
 
-### Structure
+### Mock Exam Generation
 
-Example file order:
+Explains how to properly use an instruction file to create a mock exam.
+
+1. Download the instruction file you wish to use.
+2. Download course contents (lecture notes) from LMS.
+3. Convert course contents into markdown (.md) format.
+> AI tools can convert lecture notes from PDF/PPTX to markdown easily.
+4. Copy exam information given by the lecturer (which topics are included, question types, question distribution, etc.)
+5. Attach the instruction file, converted course content markdown files, to a powerful AI model (ChatGPT 5.5+, for example), and use this prompt:
+
 ```
-project_folder
-├── <course_code>
-│   ├── MIDTERM-2_FALL2025.md
-│   ├── MIDTERM-1_SPRING2026.md
-│   ├── MIDTERM-2_FALL2025.md
-│   ├── FINAL_SPRING2026.md
-│   └── ...
-└── <course_code>
-    ├── MIDTERM.md
-    ├── FINAL.md
-    ├── PROJECT.md
-    └── ...
+Exam-specific information:
+<Lecturer's Mail>
+
+According to the attached lecture notes, 
+instruction file, and the exam-specific information,
+create 3 mock exams.
+
+The created mock exams must cover all bases of the
+topics mentioned in exam-specific information part.
+
+Mock exams must have alternating questions,
+with all 3 mock exams covering all possible question
+styles and exam scenarios.
+
+Choose questions that will be most likely come up
+in the real exam.
 ```
+> REMINDER: Replace <Lecturer's Mail> part with the actual exam mail.
 
 <br>
 
