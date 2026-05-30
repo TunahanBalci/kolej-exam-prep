@@ -44,6 +44,7 @@ Choose questions that will be most likely come up
 in the real exam.
 
 Export created mock exams as downloadable MD files.
+Export each mock exam's answer sheet as downloadable MD file.
 ```
 > REMINDER: Replace <Lecturer's Mail> part with the actual exam mail.
 
