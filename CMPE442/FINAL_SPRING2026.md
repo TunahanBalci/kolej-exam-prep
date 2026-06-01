@@ -8,7 +8,7 @@ The mock final exam should test:
 
 - Conceptual understanding of machine learning terminology and model behavior
 - Ability to distinguish learning settings, model types, and evaluation setups
-- Calculation ability on small machine learning datasets
+- Ability to use only essential, low-computation equations on small machine learning datasets
 - Algorithm tracing ability for supervised and unsupervised algorithms
 - Interpretation of model behavior from tables, plots, confusion matrices, and simple diagrams
 - Recall of important definitions without the question giving away the answer
@@ -36,14 +36,25 @@ Use this structure as the default because it matches the information given about
 
 | Section | Question Type | Suggested Points |
 |---|---|---:|
-| Section A | True / False | 40 |
+| Section A | True / False | 30 |
 | Section B | Multiple Choice | 5 |
 | Section C | Fill in the Blank | 5 |
-| Section D | Short Answer | 10 |
+| Section D | Short Answer / Classical Questions | 20 |
 | Section E | Problem Solving / Algorithm Tracing | 40 |
 | **Total** |  | **100** |
 
-This keeps the expected **40 True / False questions**, while making the remaining part of the exam more problem-oriented and less test-heavy.
+This keeps the True / False section important but reduces it to **30 statements**, while increasing the weight of classical short-answer questions. The exam should feel less like a test bank and more like a realistic final with conceptual reasoning and manageable problem solving.
+
+## Required Topic Split
+
+The final mock exam must use this topic weighting unless the user explicitly gives a different distribution:
+
+| Coverage Period | Topics | Required Weight |
+|---|---|---:|
+| Before midterm | Earlier / pre-midterm lecture topics | 35% |
+| After midterm | Later / post-midterm lecture topics | 65% |
+
+The split applies to the whole 100-point exam, not only to the problem-solving section. T/F, MCQ, fill-in-the-blank, short-answer, and problem-solving questions should collectively respect the **35% before-midterm / 65% after-midterm** balance. Later topics should have stronger representation, but earlier foundations must still appear.
 
 ---
 
@@ -52,9 +63,9 @@ This keeps the expected **40 True / False questions**, while making the remainin
 The mock final should normally include:
 
 ```text
-40 True / False questions
+30 True / False questions
 1 point each
-Total: 40 points
+Total: 30 points
 ```
 
 Use the same penalty logic expected from the midterm:
@@ -76,16 +87,13 @@ A good T/F section should include:
 
 | Topic Area | Approximate Number of Statements |
 |---|---:|
-| ML basics, data types, learning types, generalization | 5–6 |
-| Regression, gradient descent, regularization, validation | 6–7 |
-| Logistic regression, softmax, evaluation metrics | 5–6 |
-| k-NN, decision trees, feature preprocessing | 5–6 |
-| Neural networks, CNNs, RNNs, autoencoders, NLP basics | 5–6 |
-| SVMs, kernels, ensembles, random forests, boosting | 5–6 |
-| Clustering, GMM/EM, PCA, dimensionality reduction | 5–6 |
-| Bayes decision theory, association rules, reinforcement learning | 2–3 |
+| Pre-midterm foundations, data, regression, validation, regularization, logistic regression, k-NN, decision trees | 10–11 |
+| Post-midterm neural networks, CNNs, RNNs, autoencoders, NLP basics | 4–5 |
+| Post-midterm SVMs, kernels, ensembles, random forests, boosting | 5–6 |
+| Post-midterm clustering, GMM/EM, PCA, dimensionality reduction | 6–7 |
+| Post-midterm Bayesian decision theory, association rules, reinforcement learning | 2–3 |
 
-The exact distribution can vary, but all major lecture blocks should appear.
+The exact distribution can vary slightly, but the T/F section must still roughly respect the 35% before-midterm / 65% after-midterm split.
 
 ## T/F Quality Rules
 
@@ -115,14 +123,14 @@ The lecturer stated that the final will be similar to the midterm, but with fewe
 
 Therefore:
 
-- Keep the expected 40 T/F questions.
+- Use exactly 30 T/F questions.
 - Keep Multiple Choice short: usually **5 points only**.
 - Do not create a large MCQ section unless explicitly asked.
-- Use the remaining points for short answers, calculations, and algorithm tracing.
+- Use the remaining points mainly for short-answer/classical questions and algorithm tracing.
 - At least **40 points** should be problem solving or algorithm tracing.
-- At least **55–60 points** should require reasoning beyond choosing an option.
+- At least **65 points** should require reasoning beyond choosing an option.
 
-A mock final that has 40 T/F + 30 MCQ + 30 other points is not appropriate for this final.
+A mock final that has 30 T/F + 30 MCQ + 40 other points is not appropriate for this final.
 
 ---
 
@@ -156,17 +164,17 @@ Do not let early introductory topics dominate the final. Later topics should hav
 
 Unless the user gives a specific final coverage distribution, use this approximate weighting:
 
-| Topic Group | Suggested Points |
-|---|---:|
-| Foundations, data, preprocessing, feature types | 10–12 |
-| Regression, logistic regression, validation, regularization, metrics | 18–22 |
-| k-NN and decision trees | 10–14 |
-| Neural networks, CNNs, RNNs, autoencoders, NLP basics | 12–16 |
-| SVMs and ensemble methods | 12–16 |
-| Clustering, GMM/EM, PCA, dimensionality reduction | 18–24 |
-| Bayesian decision theory, association rules, reinforcement learning | 5–8 |
+| Topic Group | Coverage Period | Suggested Points |
+|---|---|---:|
+| Foundations, data, preprocessing, feature types | Before midterm | 6–8 |
+| Regression, logistic regression, validation, regularization, metrics | Before midterm | 17–20 |
+| k-NN and decision trees | Before midterm | 8–10 |
+| Neural networks, CNNs, RNNs, autoencoders, NLP basics | After midterm | 12–15 |
+| SVMs and ensemble methods | After midterm | 14–17 |
+| Clustering, GMM/EM, PCA, dimensionality reduction | After midterm | 25–28 |
+| Bayesian decision theory, association rules, reinforcement learning | After midterm | 6–8 |
 
-The final exam should feel broad, but not shallow. Prefer a few meaningful calculation/tracing problems over many tiny disconnected questions.
+The final exam should feel broad, but not shallow. Prefer conceptual/classical reasoning and a few meaningful tracing problems over many computationally heavy questions. The total should approximately satisfy **35 points before midterm** and **65 points after midterm**.
 
 ---
 
@@ -368,14 +376,14 @@ Do not include another word in the sentence that directly gives away the blank.
 
 # 11. Short Answer Rule
 
-Short-answer questions should usually be worth:
+Short-answer / classical questions should usually be worth:
 
 ```text
-2–5 points each
-Total: about 10 points
+3–5 points each
+Total: about 20 points
 ```
 
-They should require concise reasoning, not long essays.
+They should require concise reasoning, not long essays. This section should be larger than before because the revised target is to include more classical questions and fewer pure test-type questions.
 
 Good short-answer topics:
 
@@ -396,20 +404,20 @@ Avoid asking the student to “write everything you know about” a topic.
 The final should contain at least:
 
 ```text
-40 points of problem solving / algorithm tracing
+40 points of problem solving / algorithm tracing, with low arithmetic burden
 ```
 
 Recommended structure:
 
 | Problem | Topic | Suggested Points |
 |---|---|---:|
-| Problem 1 | Model evaluation, regression/logistic regression, validation, or regularization | 8–10 |
-| Problem 2 | k-NN or decision-tree calculation | 8–10 |
-| Problem 3 | Neural network, CNN, SVM, or ensemble tracing | 8–12 |
-| Problem 4 | Clustering, GMM/EM, PCA, or dimensionality reduction | 10–14 |
+| Problem 1 | Model evaluation, validation, metrics, or simple regression/logistic reasoning | 8–10 |
+| Problem 2 | k-NN or decision-tree easy calculation/tracing | 8–10 |
+| Problem 3 | Neural network/CNN/SVM/ensemble conceptual tracing | 8–12 |
+| Problem 4 | Clustering/GMM/PCA/dimensionality-reduction tracing or interpretation | 10–14 |
 | Optional Small Problem | Bayesian decision theory, association rules, or reinforcement learning | 4–6 |
 
-A strong final usually contains 4 medium-sized problems rather than 10 tiny problems.
+A strong final usually contains 4 medium-sized problems rather than 10 tiny problems, but the computations inside those problems should remain short and exam-realistic.
 
 Problem statements should provide only the data needed to solve the task. Do not include hidden hints or unnecessary reminders of the method.
 
@@ -578,6 +586,9 @@ Rules:
 
 For calculation questions:
 
+- Avoid complex calculations and long computations.
+- Include only essential, easy equations such as Gini impurity, precision, recall, F1 score, simple accuracy/error rate, simple entropy/information gain when values are manageable, support/confidence/lift, and very small projection or distance calculations.
+- Do not include long gradient-descent derivations, heavy matrix algebra, long backpropagation calculations, difficult SVM optimization, or multi-step EM arithmetic unless all intermediate values are given and the arithmetic is minimal.
 - Provide all raw data needed to solve the problem.
 - Use tables instead of paragraphs for datasets.
 - State rounding rules when decimals are expected.
@@ -628,7 +639,7 @@ Recommended difficulty mix:
 | Medium | 40–50% | Concept application, short calculations, scenario reasoning |
 | Hard | 25–35% | Multi-step problems, algorithm tracing, subtle model behavior |
 
-Do not make every T/F statement tricky. Do not make every problem computationally long. The challenge should come from understanding and application, not arithmetic overload.
+Do not make every T/F statement tricky. Do not make every problem computationally long. The challenge should come from understanding, interpretation, and application, not arithmetic overload. Calculations should be short and based only on essential formulas.
 
 ---
 
@@ -638,14 +649,14 @@ Use this as the default template unless the user requests a different distributi
 
 | Section | Topic Coverage | Points |
 |---|---|---:|
-| A | 40 mixed True / False statements across all lecture-note blocks | 40 |
+| A | 30 mixed True / False statements across all lecture-note blocks | 30 |
 | B | 5 Multiple Choice questions on easily confused distinctions | 5 |
 | C | 5 Fill-in-the-Blank questions on core terminology/formula components | 5 |
-| D | 2–3 Short Answer questions on validation, model behavior, preprocessing, generalization, or model selection | 10 |
-| E1 | Regression/logistic/evaluation/model-selection calculation | 8–10 |
-| E2 | k-NN or decision-tree calculation/tracing | 8–10 |
-| E3 | Neural network/CNN/SVM/ensemble problem | 8–12 |
-| E4 | Clustering/GMM/PCA/dimensionality-reduction problem | 10–14 |
+| D | 4–5 Short Answer / Classical questions on validation, model behavior, preprocessing, generalization, SVMs, ensembles, clustering, PCA, or RL | 20 |
+| E1 | Regression/logistic/evaluation/model-selection easy calculation or reasoning | 8–10 |
+| E2 | k-NN or decision-tree easy calculation/tracing | 8–10 |
+| E3 | Neural network/CNN/SVM/ensemble conceptual tracing problem | 8–12 |
+| E4 | Clustering/GMM/PCA/dimensionality-reduction tracing or interpretation problem | 10–14 |
 | Optional inside E | Small Bayes/association/RL scenario if needed | 4–6 |
 | **Total** |  | **100** |
 
@@ -659,18 +670,18 @@ The exam should imitate the observed midterm style while adapting it to CMPE442 
 
 Preserve:
 
-- 40 True / False questions
+- 30 True / False questions
 - 100 total points
 - A mix of objective, classical, fill-in, short-answer, and problem-solving questions
 - Algorithm-tracing questions
-- Calculation questions with small tables
+- Easy calculation questions with small tables
 - Direct but non-hinting wording
 - Questions that require recall rather than recognition only
 
 Adapt:
 
 - Reduce the number of MCQ/test-style questions outside the T/F section.
-- Increase problem-solving weight.
+- Increase classical short-answer weight and keep problem-solving weight high.
 - Include later lecture topics strongly.
 - Use ML-specific calculations and traces instead of general conceptual-only questions.
 
@@ -681,15 +692,15 @@ Adapt:
 Before finalizing a generated CMPE442 mock final, verify:
 
 - [ ] Total points add up to exactly 100.
-- [ ] The T/F section contains exactly 40 statements unless explicitly changed.
+- [ ] The T/F section contains exactly 30 statements unless explicitly changed.
 - [ ] The T/F penalty rule is written clearly.
 - [ ] The MCQ section is small.
-- [ ] At least 40 points are problem solving or algorithm tracing.
+- [ ] At least 40 points are problem solving or algorithm tracing, without complex computation.
 - [ ] The exam covers the full lecture-note range.
-- [ ] Later topics are represented strongly.
+- [ ] Later topics are represented strongly enough to satisfy the 65% post-midterm requirement.
 - [ ] No question reveals the answer or gives unnecessary hints.
 - [ ] Recall questions do not list the exact terms being asked for.
-- [ ] Calculation questions include all necessary data.
+- [ ] Calculation questions include all necessary data and use only essential, easy equations.
 - [ ] Tie-breaking and rounding rules are stated when needed.
 - [ ] Tables are used where they improve readability.
 - [ ] Sub-questions are not separate Markdown headings.
@@ -705,13 +716,13 @@ Before finalizing a generated CMPE442 mock final, verify:
 Avoid generating mock finals that:
 
 - Add up to more or less than 100 points
-- Replace the expected 40 T/F questions with a different structure
+- Replace the expected 30 T/F questions with a different structure
 - Include too many MCQs after the T/F section
 - Turn the final into a lecture summary
 - Give formula explanations inside recall questions
 - Tell the student which concept is being tested before asking the question
 - Use huge datasets for hand calculations
-- Require long matrix algebra without provided intermediate values
+- Require long matrix algebra, long gradient updates, heavy EM arithmetic, or complex SVM optimization
 - Make all problems about early supervised-learning topics
 - Ignore neural networks, SVMs, ensembles, clustering, GMM/EM, PCA, and dimensionality reduction
 - Overweight very small late topics such as association rules or reinforcement learning
@@ -741,11 +752,13 @@ When generating future CMPE442 mock final exams, follow this priority order:
 
 1. Match the lecturer’s stated final-exam style.
 2. Keep the total exactly 100 points.
-3. Include around 40 T/F questions with the midterm penalty rule.
-4. Reduce extra test-style questions outside T/F.
-5. Increase problem-solving and algorithm-tracing weight.
-6. Cover the full lecture notes, with strong representation of later topics.
-7. Do not reveal answers or give hints inside question wording.
-8. Use clean tables and readable Markdown formatting.
-9. Keep calculations realistic for exam conditions.
-10. Avoid summaries, teaching sections, and copied slide examples.
+3. Include exactly 30 T/F questions with the midterm penalty rule.
+4. Use 35% before-midterm topics and 65% after-midterm topics.
+5. Reduce extra test-style questions outside T/F and add more classical short-answer questions.
+6. Keep problem-solving and algorithm-tracing weight high, but avoid complex computations.
+7. Cover the full lecture notes, with strong representation of later topics.
+8. Do not reveal answers or give hints inside question wording.
+9. Do not include topic names on the question titles. Bad example: "Question 5 — PCA and Bayesian Decision", Good Example: "Question 5" 
+10. Use clean tables and readable Markdown formatting.
+11. Keep calculations realistic for exam conditions and limited to essential formulas.
+12. Avoid summaries, teaching sections, and copied slide examples.
