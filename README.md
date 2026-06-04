@@ -75,13 +75,13 @@ All verified instructions:<br><br>
 
 Instructions on how to create a mind map of a course, using lecture notes and templates provided here.
 
-1. Download mindmap markdown instructions, you may edit it to your liking.
+1. Download mind map markdown instructions, you may edit it to your liking.
 > Currently these instructions state not to include any formulas, but you may change this.
-2. Download the mindmap HTML template.
+2. Download the mind map HTML template.
 4. Attach markdown and HTML templates and your lecture notes,
 5. Select chapter(s) to cover, and give this prompt to a strong AI model:
 ```
-According to the provided HTML template, lecture notes and mindmap instructions,
+According to the provided HTML template, lecture notes and mind map instructions,
 
 Included chapter(s):
 - <CHAPTER>
