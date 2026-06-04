@@ -11,6 +11,7 @@ This repository acts as an archive. It stores instructions to create mock exams 
 >   - Midterm(s)
 >   - Final
 > - Project preparation instructions
+> - Mind map generation templates
 
 <br>
 
@@ -27,7 +28,9 @@ Explains how to properly use an instruction file to create a mock exam.
 
 ```
 Exam-specific information:
-<Lecturer's Mail>
+<Lecturer's Mail or any other custom instructions>
+
+---
 
 According to the attached lecture notes, 
 instruction file, and the exam-specific information,
@@ -63,6 +66,32 @@ All verified instructions:<br><br>
 | COURSE CODE | INSTRUCTION NAME     | SCORE |
 |-------------|----------------------|-------|
 | CMPE382     | MIDTERM-2_SPRING2026 | ⭐⭐⭐⭐⭐   |
+
+
+<br>
+
+
+### Mind Map Generation
+
+Instructions on how to create a mind map of a course, using lecture notes and templates provided here.
+
+1. Download mindmap markdown instructions, you may edit it to your liking.
+> Currently these instructions state not to include any formulas, but you may change this.
+2. Download the mindmap HTML template.
+4. Attach markdown and HTML templates and your lecture notes,
+5. Select chapter(s) to cover, and give this prompt to a strong AI model:
+```
+According to the provided HTML template, lecture notes and mindmap instructions,
+
+Included chapter(s):
+- <CHAPTER>
+- >CHAPTER> (pg. X - Y)
+
+```
+> [OPTIONAL] You can specify page ranges. For example:
+> - Semaphores (pg. 150-200)
+>
+> For optimal results, keep covered chaptes part with chapters that are 50-150 pages long TOTAL.
 
 
 <br>
