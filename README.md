@@ -49,7 +49,8 @@ in the real exam.
 Export created mock exams as downloadable MD files.
 Export each mock exam's answer sheet as downloadable MD file.
 ```
-> REMINDER: Replace <Lecturer's Mail> part with the actual exam mail.
+> [!NOTE]
+> Replace `<Lecturer's Mail>` part with the actual exam mail.
 
 <br>
 
@@ -88,7 +89,8 @@ Included chapter(s):
 - >CHAPTER> (pg. X - Y)
 
 ```
-> [OPTIONAL] You can specify page ranges. For example:
+> [!TIP] 
+> You can specify page ranges. For example:
 > - Semaphores (pg. 150-200)
 >
 > For optimal results, keep covered chaptes part with chapters that are 50-150 pages long TOTAL.
