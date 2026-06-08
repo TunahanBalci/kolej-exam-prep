@@ -35,7 +35,7 @@ Covered chapters will be specified by the user.
 - No need to treat the provided lecture notes as the single source of truth.
 - For each topic, understand what it is and what information it gives, and explain it in your own terms; like when a user asks "what is this topic in the slides? explain".
 - When explaining a topic, dont add unnecessary information, as this will be a focused, exam-pr
-- If a topic contains sub-topics or elements listed, use unordered lists instead of expressing it in sentences. If order or sequence matters, use ordered lists.
+- If a topic contains ANY KIND OF sub-topics or elements listed, use unordered lists instead of expressing it in sentences. If order or sequence matters, use ordered lists. If you need to state/list multiple objects in a sentence, use a list instead. This rule is important for readability.
 
 >   Bad list example:
 >   "System programs usage area: File manipulation, status information, 

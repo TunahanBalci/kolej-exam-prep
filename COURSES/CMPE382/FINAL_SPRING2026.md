@@ -156,7 +156,6 @@ The exam must be easy to read.
 
 Use:
 
-- Clear main question titles
 - Short paragraphs
 - Tables for process, page, disk, resource, or file-system data
 - Code blocks for code or pseudocode
@@ -945,3 +944,4 @@ When generating future CMPE382 mock final exams, follow this priority order:
 8. Keep cumulative review present but controlled.
 9. Ensure the point total is exactly 100.
 10. Avoid over-guiding the student.
+11. Question titles cannot include topic names. Good Title Example: "Question 5". Bad Title Example: "Question 5: Semaphores"
