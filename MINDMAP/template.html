@@ -236,6 +236,35 @@
       outline: none;
     }
 
+    .note p {
+      margin: 8px 0 0;
+    }
+
+    .note ul,
+    .note ol,
+    .node-list {
+      margin: 9px 0 0;
+      padding-left: 1.2rem;
+      text-align: left;
+    }
+
+    .note li,
+    .node-list li {
+      margin: 4px 0;
+      padding-left: 0.1rem;
+    }
+
+    .note li::marker,
+    .node-list li::marker {
+      color: currentColor;
+      font-weight: 850;
+    }
+
+    .node.list-node {
+      width: 280px;
+      min-height: 120px;
+    }
+
     [contenteditable="true"] {
       user-select: text;
       cursor: text;
@@ -250,8 +279,13 @@
     .hidden-node { display: none; }
 
 
-    /* IDE-style code block component
-       Usage inside a node note:
+    /* Rich node note components
+       Lists:
+       - Add listType: 'ul' or 'ol' to the node data object.
+       - Add listItems: ['First item', 'Second item'].
+       - Optional: keep note as a short intro above the list.
+
+       IDE-style code block:
        - Set htmlNote: true on the node data object.
        - Put the .code-card HTML inside the note string. */
     .node.code-node {
@@ -341,6 +375,7 @@
       .node { width: 190px; }
       .node.root { width: 220px; }
       .node.code-node { width: 360px; }
+      .node.list-node { width: 240px; }
     }
 
     @media print {
@@ -390,8 +425,8 @@
 
       { id: 'branch2', parent: 'root', title: 'Chapter / Category 2', note: 'Second main branch.', color: 'branch-2', collapsed: false },
       { id: 'branch2a', parent: 'branch2', title: 'Subtopic 2.1', note: 'Formula, example, or explanation.', color: 'branch-2', collapsed: false },
-      { id: 'branch2b', parent: 'branch2', title: 'Subtopic 2.2', note: 'Important comparison or rule.', color: 'branch-2', collapsed: false },
-      { id: 'branch2c', parent: 'branch2', title: 'Subtopic 2.3', note: 'Useful reminder.', color: 'branch-2', collapsed: false },
+      { id: 'branch2b', parent: 'branch2', title: 'Unordered List Example', note: 'Use listType: \'ul\' and listItems for bullet lists.', color: 'branch-2', collapsed: false, listType: 'ul', listItems: ['First bullet point', 'Second bullet point', 'Third bullet point'] },
+      { id: 'branch2c', parent: 'branch2', title: 'Ordered List Example', note: 'Use listType: \'ol\' when order matters.', color: 'branch-2', collapsed: false, listType: 'ol', listItems: ['Read the definition', 'Check the example', 'Review the edge case'] },
 
       { id: 'branch3', parent: 'root', title: 'Chapter / Category 3', note: 'Third main branch.', color: 'branch-3', collapsed: false },
       { id: 'branch3a', parent: 'branch3', title: 'Subtopic 3.1', note: 'Cause, result, or relationship.', color: 'branch-3', collapsed: false },
@@ -421,6 +456,7 @@
     const DEFAULT_NODE_WIDTH = 220;
     const DEFAULT_ROOT_WIDTH = 260;
     const DEFAULT_CODE_WIDTH = 420;
+    const DEFAULT_LIST_WIDTH = 280;
     const HORIZONTAL_GAP = 96;
     const VERTICAL_GAP = 96;
     const STAGGER_Y = 46;
@@ -505,7 +541,39 @@
     function fallbackWidth(node) {
       if (node.id === 'root') return DEFAULT_ROOT_WIDTH;
       if (node.htmlNote) return DEFAULT_CODE_WIDTH;
+      if (hasList(node)) return DEFAULT_LIST_WIDTH;
       return DEFAULT_NODE_WIDTH;
+    }
+
+    function hasList(node) {
+      return Array.isArray(node.listItems) && node.listItems.length > 0;
+    }
+
+    function escapeHTML(value) {
+      return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+
+    function buildListHTML(node) {
+      if (!hasList(node)) return '';
+      const tagName = node.listType === 'ol' ? 'ol' : 'ul';
+      const items = node.listItems
+        .map(item => `<li>${escapeHTML(item)}</li>`)
+        .join('');
+      return `<${tagName} class="node-list">${items}</${tagName}>`;
+    }
+
+    function buildNoteHTML(node) {
+      if (node.htmlNote) return node.note;
+      if (hasList(node)) {
+        const intro = node.note ? `<p>${escapeHTML(node.note)}</p>` : '';
+        return `${intro}${buildListHTML(node)}`;
+      }
+      return escapeHTML(node.note);
     }
 
     function measureNodeDimensions() {
@@ -523,7 +591,7 @@
     function dimensionOf(node, dimensions) {
       return dimensions.get(node.id) || {
         width: fallbackWidth(node),
-        height: node.id === 'root' ? 104 : node.htmlNote ? 150 : 92
+        height: node.id === 'root' ? 104 : node.htmlNote ? 150 : hasList(node) ? 120 : 92
       };
     }
 
@@ -621,7 +689,7 @@
         if (!visible) return;
 
         const article = document.createElement('article');
-        article.className = `node ${item.color} ${item.htmlNote ? 'code-node' : ''} layout-pending`;
+        article.className = `node ${item.color} ${item.htmlNote ? 'code-node' : ''} ${hasList(item) ? 'list-node' : ''} layout-pending`;
         article.id = item.id;
         article.dataset.parent = item.parent || '';
         article.dataset.x = '0';
@@ -643,8 +711,8 @@
 
         article.querySelector('.title').textContent = item.title;
         const noteEl = article.querySelector('.note');
-        if (item.htmlNote) {
-          noteEl.innerHTML = item.note;
+        if (item.htmlNote || hasList(item)) {
+          noteEl.innerHTML = buildNoteHTML(item);
         } else {
           noteEl.textContent = item.note;
         }
@@ -661,7 +729,12 @@
         });
 
         article.querySelector('.note').addEventListener('input', event => {
-          item.note = item.htmlNote ? event.currentTarget.innerHTML.trim() : event.currentTarget.textContent.trim();
+          item.note = (item.htmlNote || hasList(item)) ? event.currentTarget.innerHTML.trim() : event.currentTarget.textContent.trim();
+          if (hasList(item)) {
+            item.htmlNote = true;
+            delete item.listType;
+            delete item.listItems;
+          }
           scheduleLayout();
         });
 
