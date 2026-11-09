@@ -135,6 +135,67 @@ def check_render_lists_and_html(page):
     assert page.evaluate("plainTitle('**Big** $O(n)$ `x`')") == 'Big O(n) x'
 
 
+# ---------- Task 3: zig-zag layout ----------
+
+LAYOUT_JS = """([spec]) => {
+  // spec: list of [id, parentId, w, h]; returns boxes + connector drop segments + widths
+  const nodes = new Map(spec.map(([id, p, w, h]) => [id, {id, parentId: p, children: [], w, h}]));
+  for (const n of nodes.values()) if (n.parentId) nodes.get(n.parentId).children.push(n);
+  const root = [...nodes.values()].find(n => !n.parentId);
+  const L = layoutTree(root, n => n.children, n => ({w: n.w, h: n.h}));
+  const box = n => { const p = L.pos.get(n.id); return {id: n.id, l: p.x - n.w/2, r: p.x + n.w/2, t: p.y, b: p.y + n.h, x: p.x, row: p.row}; };
+  const old = n => n.children.length ? Math.max(n.w, n.children.reduce((s, c) => s + old(c), 0) + 96 * (n.children.length - 1)) : n.w;
+  // vertical segments the connectors use: low-row child's drop through its high band, high-row parent's drop through its low band
+  const segs = [];
+  for (const n of nodes.values()) {
+    const p = L.pos.get(n.id), d = depthOf(n);
+    if (n.parentId && p.row === 1) segs.push({owner: n.id, x: p.x, t: L.levels[d].top, b: p.y});
+    if (n.children.length && p.row === 0) segs.push({owner: n.id, x: p.x, t: p.y + n.h, b: L.levels[d].bottom});
+  }
+  function depthOf(n) { let d = 0; while (n.parentId) { n = nodes.get(n.parentId); d++; } return d; }
+  return {boxes: [...nodes.values()].map(box), segs, width: L.width, oldWidth: old(root)};
+}"""
+
+
+def stress_spec():
+    spec = [['r', None, 320, 110]]
+    for a in range(5):
+        spec.append([f'a{a}', 'r', 300, 120])
+        for b in range(4):
+            spec.append([f'a{a}b{b}', f'a{a}', 300, 90 + 40 * (b % 2)])
+            for c in range(3):
+                spec.append([f'a{a}b{b}c{c}', f'a{a}b{b}', 300 if c else 420, 100 if c else 220])
+    return spec  # 1 + 5 + 20 + 60 = 86 nodes, 4 levels, mixed sizes incl. code-sized cards
+
+
+def assert_layout_ok(res):
+    bx = res['boxes']
+    for i, a in enumerate(bx):
+        for b in bx[i + 1:]:
+            assert a['r'] <= b['l'] or b['r'] <= a['l'] or a['b'] <= b['t'] or b['b'] <= a['t'], (a['id'], b['id'])
+    for s in res['segs']:
+        for b in bx:
+            if b['id'] != s['owner'] and b['l'] < s['x'] < b['r'] and b['t'] < s['b'] and s['t'] < b['b']:
+                raise AssertionError(f"line of {s['owner']} crosses {b['id']}")
+
+
+@check()
+def check_layout_small(page):
+    res = page.evaluate(LAYOUT_JS, [[['r', None, 300, 100], ['a', 'r', 300, 90], ['b', 'r', 300, 90], ['c', 'r', 300, 90]]])
+    assert_layout_ok(res)
+    rows = [b['row'] for b in res['boxes']]
+    assert rows == [0, 0, 1, 0]
+    a, b, c = res['boxes'][1:]
+    assert a['r'] > b['l'] and b['r'] > c['l']  # neighbours tuck in (overlap horizontally)
+
+
+@check()
+def check_layout_stress(page):
+    res = page.evaluate(LAYOUT_JS, [stress_spec()])
+    assert_layout_ok(res)
+    assert res['width'] <= 0.7 * res['oldWidth'], (res['width'], res['oldWidth'])
+
+
 def main():
     flt = sys.argv[1] if len(sys.argv) > 1 else ''
     failed = 0

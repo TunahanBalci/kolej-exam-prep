@@ -213,6 +213,91 @@ function plainTitle(md) {
   return String(md ?? '').replace(/\\[()[\]]/g, '').replace(/[`*_$]/g, '').trim();
 }
 
+// ---------- Zig-zag layout ----------
+// Siblings alternate between a high row (0) and a low row (1). Every (depth, row) pair is a
+// horizontal band; bands never overlap vertically, so packing is 1-D per band. Lanes keep room
+// for the vertical part of each connector: a low-row node's incoming line crosses its depth's
+// high band, and a high-row parent's outgoing line crosses its depth's low band.
+
+const H_GAP = 28, LANE = 16, ROW_GAP = 22, LEVEL_GAP = 64, MARGIN = 40;
+
+function layoutTree(root, kids, size) {
+  const info = new Map();
+
+  function pack(node, depth, row) {
+    const { w, h } = size(node);
+    const me = { w, h, depth, row, rel: 0, children: [] };
+    info.set(node.id, me);
+    const merged = new Map();   // band -> rightmost edge among children placed so far
+    const placed = [];
+    kids(node).forEach((child, i) => {
+      const contour = pack(child, depth + 1, i % 2);
+      let off = placed.length ? placed.at(-1).off : 0;
+      if (placed.length) {
+        for (const [band, [lo]] of contour) {
+          if (merged.has(band)) off = Math.max(off, merged.get(band) + H_GAP - lo);
+        }
+      }
+      for (const [band, [, hi]] of contour) merged.set(band, Math.max(merged.get(band) ?? -Infinity, hi + off));
+      placed.push({ child, off, contour });
+    });
+
+    const centre = placed.length ? (placed[0].off + placed.at(-1).off) / 2 : 0;
+    const contour = new Map();
+    const add = (band, lo, hi) => {
+      const c = contour.get(band);
+      contour.set(band, c ? [Math.min(c[0], lo), Math.max(c[1], hi)] : [lo, hi]);
+    };
+    add(`${depth}:${row}`, -w / 2, w / 2);
+    if (row === 1) add(`${depth}:0`, -LANE / 2, LANE / 2);
+    if (row === 0 && placed.length) add(`${depth}:1`, -LANE / 2, LANE / 2);
+    for (const p of placed) {
+      info.get(p.child.id).rel = p.off - centre;
+      me.children.push(p.child.id);
+      for (const [band, [lo, hi]] of p.contour) add(band, lo + p.off - centre, hi + p.off - centre);
+    }
+    return contour;
+  }
+  pack(root, 0, 0);
+
+  // absolute x (centres), then the vertical bands
+  const absX = new Map();
+  (function place(id, x) {
+    absX.set(id, x);
+    info.get(id).children.forEach(c => place(c, x + info.get(c).rel));
+  })(root.id, 0);
+
+  const bands = [];
+  for (const m of info.values()) {
+    const b = bands[m.depth] ??= { hh: 0, hl: 0 };
+    if (m.row) b.hl = Math.max(b.hl, m.h); else b.hh = Math.max(b.hh, m.h);
+  }
+  let y = MARGIN;
+  for (const b of bands) {
+    b.top = y;
+    b.lowTop = y + b.hh + ROW_GAP;
+    b.bottom = b.hl ? b.lowTop + b.hl : y + b.hh;
+    y = b.bottom + LEVEL_GAP;
+  }
+
+  let minL = Infinity, maxR = -Infinity;
+  for (const [id, m] of info) {
+    minL = Math.min(minL, absX.get(id) - m.w / 2);
+    maxR = Math.max(maxR, absX.get(id) + m.w / 2);
+  }
+  const pos = new Map();
+  for (const [id, m] of info) {
+    const b = bands[m.depth];
+    pos.set(id, { x: absX.get(id) - minL + MARGIN, y: m.row ? b.lowTop : b.top, row: m.row });
+  }
+  return {
+    pos,
+    levels: bands.map(b => ({ top: b.top, bottom: b.bottom })),
+    width: maxR - minL + 2 * MARGIN,
+    height: bands.at(-1).bottom + MARGIN
+  };
+}
+
 window.mindmapReady = true;
 </script>
 </body>
