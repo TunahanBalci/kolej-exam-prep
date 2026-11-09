@@ -58,7 +58,8 @@
       #toolbar { gap: 3px; }
       #toolbar .lbl { display: none; }
       #toolbar button, .depth { padding: 0; }
-      .depth input { width: 42px; }   /* + 2px border = 44px */
+      .depth { border: 0; background: none; }
+      .depth input { width: 44px; border: 1px solid var(--btn-border); border-radius: 12px; background: var(--btn); }
     }
 
     #mapWrapper {
