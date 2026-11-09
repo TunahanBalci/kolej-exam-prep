@@ -1,0 +1,131 @@
+#!/usr/bin/env python3
+"""Mind map viewer checks. Run: python3 MINDMAP/tests/test_viewer.py [name-filter]
+Needs network: the viewer loads its libraries from CDNs."""
+import sys, re, json, pathlib, tempfile, traceback
+from playwright.sync_api import sync_playwright
+
+URL = (pathlib.Path(__file__).resolve().parent.parent / 'template.html').as_uri()
+VIEWPORTS = {
+    'phone':    dict(viewport={'width': 390,  'height': 844},  has_touch=True),
+    'tablet':   dict(viewport={'width': 820,  'height': 1180}, has_touch=True),
+    'tablet-l': dict(viewport={'width': 1180, 'height': 820},  has_touch=True),
+    'desktop':  dict(viewport={'width': 1440, 'height': 900}),
+}
+TOUCH = ('phone', 'tablet', 'tablet-l')
+ALL = TOUCH + ('desktop',)
+CHECKS = []
+
+
+def check(*viewports):  # no args: logic check, run once at desktop size
+    def deco(fn):
+        CHECKS.append((fn, viewports or ('desktop',)))
+        return fn
+    return deco
+
+
+def open_page(browser, vp, url=URL):
+    page = browser.new_context(**VIEWPORTS[vp], accept_downloads=True).new_page()
+    page.goto(url)
+    page.wait_for_function('window.mindmapReady === true', timeout=20000)
+    return page
+
+
+# ---------- Task 1: parser ----------
+
+def parse(page, text, name='map.md'):
+    return page.evaluate("""([t, n]) => { const r = parseMap(t, n); if (!r) return null;
+        return flatten(r).map(x => ({id: x.id, title: x.title, body: x.body.trim(), depth: x.depth,
+            color: x.color, parentId: x.parentId})); }""", [text, name])
+
+
+@check()
+def check_parse_basic(page):
+    ns = parse(page, "intro ignored\n# Root\nroot body\n## A\na body\n### A1\n## B\n")
+    assert [n['title'] for n in ns] == ['Root', 'A', 'A1', 'B']
+    assert [n['depth'] for n in ns] == [0, 1, 2, 1]
+    assert ns[0]['body'] == 'root body' and ns[1]['body'] == 'a body'
+    assert ns[2]['parentId'] == ns[1]['id'] and ns[3]['parentId'] == ns[0]['id']
+
+
+@check()
+def check_parse_skips_deep_and_fences(page):
+    ns = parse(page, "# R\n## A\n#### Skipped\n######## Eight\n```python\n# not a heading\n```\n")
+    assert [n['title'] for n in ns] == ['R', 'A', 'Skipped', 'Eight']
+    assert ns[2]['parentId'] == ns[1]['id'] and ns[2]['depth'] == 2
+    assert ns[3]['depth'] == 3 and '# not a heading' in ns[3]['body']
+
+
+@check()
+def check_parse_synthetic_root(page):
+    ns = parse(page, "# One\n# Two\n", 'os-ch3.md')
+    assert ns[0]['id'] == 'root' and ns[0]['title'] == 'os-ch3'
+    assert [n['depth'] for n in ns] == [0, 1, 1]
+    ns = parse(page, "## Starts deep\n## Second\n", 'x.md')
+    assert ns[0]['title'] == 'x' and len(ns) == 3
+
+
+@check()
+def check_parse_colors_and_empty(page):
+    text = "# R\n" + "".join(f"## B{i}\n### C{i}\n" for i in range(6))
+    ns = parse(page, text)
+    assert ns[0]['color'] == 'root'
+    b = [n for n in ns if n['depth'] == 1]
+    assert [n['color'] for n in b] == ['branch-1', 'branch-2', 'branch-3', 'branch-4', 'branch-5', 'branch-1']
+    assert all(n['color'] == next(x for x in ns if x['id'] == n['parentId'])['color'] for n in ns if n['depth'] == 2)
+    assert parse(page, "no headings here\n") is None
+
+
+@check()
+def check_parse_bom_crlf(page):  # Review Focus 2
+    ns = parse(page, "﻿# Root\r\n## A\r\nbody\r\n")
+    assert [n['title'] for n in ns] == ['Root', 'A'] and ns[1]['body'] == 'body'
+
+
+@check()
+def check_embedded_sample(page):
+    m = page.evaluate("readEmbeddedMap()")
+    assert m['exported'] is False
+    ns = parse(page, m['text'], m['name'])
+    assert ns and max(n['depth'] for n in ns) >= 4
+
+
+def launch(bt):
+    try:
+        return bt.launch()
+    except Exception:
+        # ponytail: Playwright may not ship a Firefox build for this distro; fall back to any cached one
+        builds = sorted(pathlib.Path.home().glob(f'.cache/ms-playwright/{bt.name}-*/{bt.name}/{bt.name}'))
+        if not builds:
+            raise
+        return bt.launch(executable_path=str(builds[-1]))
+
+
+def main():
+    flt = sys.argv[1] if len(sys.argv) > 1 else ''
+    failed = 0
+    with sync_playwright() as p:
+        for bt in (p.chromium, p.firefox):
+            browser = launch(bt)
+            for fn, vps in CHECKS:
+                if flt not in fn.__name__:
+                    continue
+                for vp in vps:
+                    page = None
+                    try:
+                        page = open_page(browser, vp)
+                        fn(page)
+                        print(f'PASS {bt.name:8} {vp:8} {fn.__name__}')
+                    except Exception:
+                        failed += 1
+                        print(f'FAIL {bt.name:8} {vp:8} {fn.__name__}')
+                        traceback.print_exc()
+                    finally:
+                        if page:
+                            page.context.close()
+            browser.close()
+    print('ALL PASS' if not failed else f'{failed} FAILED')
+    sys.exit(1 if failed else 0)
+
+
+if __name__ == '__main__':
+    main()
