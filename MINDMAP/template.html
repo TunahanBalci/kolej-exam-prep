@@ -73,6 +73,26 @@
     #mindMap { position: relative; }
     #connections { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
     #connections path { fill: none; stroke: var(--c); stroke-width: 3; stroke-linecap: round; opacity: 0.6; }
+    #mapWrapper.dragging { cursor: grabbing; }
+    .hint {
+      position: absolute; left: 12px; bottom: max(12px, env(safe-area-inset-bottom)); z-index: 2;
+      padding: 7px 11px; border-radius: 999px; pointer-events: none; font-size: 0.78rem;
+      background: var(--bar); border: 1px solid var(--bar-border); color: var(--muted);
+    }
+
+    #pathBar {
+      display: flex; align-items: center; gap: 2px; min-height: 40px; padding: 2px 8px;
+      overflow-x: auto; white-space: nowrap; scrollbar-width: none;
+      background: var(--bar); border-bottom: 1px solid var(--bar-border);
+    }
+    .crumb {
+      flex: 0 0 auto; max-width: 45vw; overflow: hidden; text-overflow: ellipsis;
+      padding: 9px 6px; border: 0; border-radius: 8px; background: none; cursor: pointer;
+      color: var(--muted); font: inherit; font-size: 0.85rem;
+    }
+    .crumb.on { color: var(--text); font-weight: 700; }
+    .sep { color: var(--muted); opacity: 0.6; }
+    .node.selected { outline: 3px solid var(--c); outline-offset: 3px; }
 
     .node {
       position: absolute; width: 300px; padding: 14px 16px 14px 16px;
@@ -144,6 +164,7 @@
   <div id="mapStage">
     <div id="mindMap"><svg id="connections" aria-hidden="true"></svg></div>
   </div>
+  <div class="hint" id="hint">Drag to move · Pinch or wheel to zoom · Tap ± to fold</div>
 </section>
 <div id="toast" role="status" hidden></div>
 <input id="fileInput" type="file" hidden />
@@ -484,7 +505,145 @@ function renderMap() {
   if (resizeObserver) resizeObserver.disconnect();
   resizeObserver = new ResizeObserver(scheduleLayout);
   mindMap.querySelectorAll('.node').forEach(e => resizeObserver.observe(e));
+  // a selection hidden by folding or the depth limit moves up to its nearest visible ancestor
+  let n = nodesById.get(selectedId);
+  while (n && !$('node-' + n.id)) n = nodesById.get(n.parentId);
+  if (n) selectNode(n.id); else { selectedId = null; renderPathBar(); }
 }
+
+// ---------- Selection and path bar ----------
+
+function selectNode(id) {
+  selectedId = id;
+  mindMap.querySelectorAll('.node.selected').forEach(e => e.classList.remove('selected'));
+  const el = $('node-' + id);
+  if (el) el.classList.add('selected');
+  renderPathBar();
+}
+
+function renderPathBar() {
+  const path = [];
+  for (let n = nodesById.get(selectedId) || mapRoot; n; n = nodesById.get(n.parentId)) path.unshift(n);
+  const bar = $('pathBar');
+  bar.innerHTML = path.map((n, i) => (i ? '<span class="sep">›</span>' : '') +
+    `<button type="button" class="crumb${n.id === selectedId ? ' on' : ''}" data-id="${esc(n.id)}">${esc(plainTitle(n.title))}</button>`
+  ).join('');
+  bar.scrollLeft = bar.scrollWidth;
+}
+
+// Slide (at the current zoom) so the node is centred horizontally, a quarter of the way down.
+function panTo(id) {
+  const p = lastLayout && lastLayout.pos.get(id);
+  if (!p) return;
+  view.x = wrapper.clientWidth / 2 - p.x * view.scale;
+  view.y = wrapper.clientHeight / 4 - p.y * view.scale;
+  stage.style.transition = 'transform 250ms ease';
+  applyView();
+  setTimeout(() => { stage.style.transition = ''; }, 260);
+}
+
+$('pathBar').addEventListener('click', e => {
+  const crumb = e.target.closest('.crumb');
+  if (crumb) { selectNode(crumb.dataset.id); panTo(crumb.dataset.id); }
+});
+
+// ---------- Gestures: pan from anywhere, pinch/wheel zoom, taps ----------
+// Taps are handled on pointerup (not click) so a drag that starts on a node still pans.
+
+const TAP_SLOP = 8;
+const pointers = new Map();
+let gesture = null, drag = null, pinch = null;
+
+function startDrag() {
+  const [p] = pointers.values();
+  drag = { x: p.x, y: p.y, vx: view.x, vy: view.y };
+  pinch = null;
+}
+
+function startPinch() {
+  const [a, b] = pointers.values();
+  const r = wrapper.getBoundingClientRect();
+  const mx = (a.x + b.x) / 2 - r.left, my = (a.y + b.y) / 2 - r.top;
+  pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, scale: view.scale,
+            mapX: (mx - view.x) / view.scale, mapY: (my - view.y) / view.scale };
+  drag = null;
+}
+
+wrapper.addEventListener('pointerdown', e => {
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  try { wrapper.setPointerCapture(e.pointerId); } catch { /* synthetic or already gone */ }
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  $('hint').hidden = true;
+  if (pointers.size === 1) {
+    gesture = { id: e.pointerId, target: e.target, x0: e.clientX, y0: e.clientY, moved: false, multi: false };
+    startDrag();
+    wrapper.classList.add('dragging');
+  } else {
+    if (gesture) gesture.multi = true;
+    startPinch();
+  }
+});
+
+wrapper.addEventListener('pointermove', e => {
+  if (!pointers.has(e.pointerId)) return;
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (gesture && e.pointerId === gesture.id && Math.hypot(e.clientX - gesture.x0, e.clientY - gesture.y0) > TAP_SLOP) gesture.moved = true;
+  if (drag) {
+    view.x = drag.vx + e.clientX - drag.x;
+    view.y = drag.vy + e.clientY - drag.y;
+    applyView();
+  } else if (pinch) {
+    const [a, b] = pointers.values();
+    const r = wrapper.getBoundingClientRect();
+    const mx = (a.x + b.x) / 2 - r.left, my = (a.y + b.y) / 2 - r.top;
+    view.scale = clampScale(pinch.scale * Math.hypot(a.x - b.x, a.y - b.y) / pinch.d);
+    view.x = mx - pinch.mapX * view.scale;
+    view.y = my - pinch.mapY * view.scale;
+    applyView();
+  }
+});
+
+function endPointer(e) {
+  if (!pointers.has(e.pointerId)) return;
+  pointers.delete(e.pointerId);
+  try { wrapper.releasePointerCapture(e.pointerId); } catch { /* not captured */ }
+  if (pointers.size === 0) {
+    const g = gesture;
+    gesture = drag = pinch = null;
+    wrapper.classList.remove('dragging');
+    if (g && e.type === 'pointerup' && !g.multi && !g.moved) handleTap(g.target);
+  } else if (pointers.size === 1) startDrag();
+  else startPinch();
+}
+wrapper.addEventListener('pointerup', endPointer);
+wrapper.addEventListener('pointercancel', endPointer);
+
+function handleTap(target) {
+  const link = target.closest('a[href]');
+  if (link) { window.open(link.href, '_blank', 'noopener'); return; }
+  const node = target.closest('.node');
+  if (!node) return;
+  if (target.closest('.toggle')) {
+    const id = node.dataset.id;
+    if (collapsed.has(id)) collapsed.delete(id); else collapsed.add(id);
+    renderMap();
+  } else selectNode(node.dataset.id);
+}
+
+// the tap handler opens links itself; stop the native click from also navigating this page
+wrapper.addEventListener('click', e => { if (e.target.closest('a')) e.preventDefault(); });
+wrapper.addEventListener('dblclick', e => e.preventDefault());
+document.addEventListener('gesturestart', e => e.preventDefault());   // iOS page zoom
+
+wrapper.addEventListener('wheel', e => {
+  e.preventDefault();
+  const r = wrapper.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
+  const s = clampScale(view.scale * (e.deltaY < 0 ? 1.08 : 0.92));
+  view.x = mx - (mx - view.x) * s / view.scale;
+  view.y = my - (my - view.y) * s / view.scale;
+  view.scale = s;
+  applyView();
+}, { passive: false });
 
 // Shrink display math that is wider than its card instead of letting it spill or scroll.
 function fitMath() {

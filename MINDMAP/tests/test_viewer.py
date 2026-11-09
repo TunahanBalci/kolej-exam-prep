@@ -274,6 +274,92 @@ def check_long_content_fits(page):  # Review Focus 3
         assert el.evaluate("e => e.scrollWidth <= e.clientWidth + 1")
 
 
+# ---------- Task 5: gestures, selection, path bar ----------
+
+PTR = """([type, sel, x, y, id, idx = 0]) => { const el = document.querySelectorAll(sel)[idx];
+  el.dispatchEvent(new PointerEvent(type, {pointerId: id, pointerType: 'touch', isPrimary: id === 1,
+    clientX: x, clientY: y, button: 0, buttons: type === 'pointerup' ? 0 : 1, bubbles: true, cancelable: true})); }"""
+
+
+def center(page, sel, idx=0):
+    b = page.locator(sel).nth(idx).bounding_box(); return b['x'] + b['width'] / 2, b['y'] + b['height'] / 2
+
+
+def tap(page, sel, idx=0):  # dispatches on the element itself, so it works even when it is off-screen
+    x, y = center(page, sel, idx)
+    page.evaluate(PTR, ['pointerdown', sel, x, y, 1, idx]); page.evaluate(PTR, ['pointerup', sel, x, y, 1, idx])
+
+
+@check(*TOUCH)
+def check_drag_on_node_pans(page):
+    x, y = center(page, '#mindMap .node .title')
+    before = page.evaluate("({...view})")
+    page.evaluate(PTR, ['pointerdown', '#mindMap .node .title', x, y, 1])
+    page.evaluate(PTR, ['pointermove', '#mapWrapper', x - 60, y + 40, 1])
+    page.evaluate(PTR, ['pointerup', '#mapWrapper', x - 60, y + 40, 1])
+    after = page.evaluate("({...view})")
+    assert round(after['x'] - before['x']) == -60 and round(after['y'] - before['y']) == 40
+    assert page.evaluate("selectedId") in (None, page.evaluate("mapRoot.id"))  # a drag is not a tap-select
+
+
+@check('desktop')
+def check_mouse_drag_pans(page):
+    x, y = center(page, '#mindMap .node .title')
+    vx = page.evaluate("view.x")
+    page.mouse.move(x, y); page.mouse.down(); page.mouse.move(x + 50, y, steps=5); page.mouse.up()
+    assert round(page.evaluate("view.x") - vx) == 50
+
+
+@check(*TOUCH)
+def check_pinch_zoom_and_release_over_toggle(page):  # Review Focus 4
+    n = page.locator('#mindMap .node').count()
+    tx, ty = center(page, '#mindMap .toggle')
+    s0 = page.evaluate("view.scale")
+    page.evaluate(PTR, ['pointerdown', '#mindMap .toggle', tx, ty, 1])       # finger 1 rests on a toggle
+    page.evaluate(PTR, ['pointerdown', '#mapWrapper', tx + 60, ty + 60, 2])
+    page.evaluate(PTR, ['pointermove', '#mapWrapper', tx + 160, ty + 160, 2])
+    assert page.evaluate("view.scale") > s0
+    page.evaluate(PTR, ['pointerup', '#mapWrapper', tx + 160, ty + 160, 2])
+    page.evaluate(PTR, ['pointerup', '#mindMap .toggle', tx, ty, 1])         # finger 1 never moved
+    assert page.locator('#mindMap .node').count() == n
+
+
+@check(*ALL)
+def check_tap_toggle_select_and_crumbs(page):
+    n = page.locator('#mindMap .node').count()
+    tap(page, '#mindMap .toggle', 1); assert page.locator('#mindMap .node').count() < n
+    tap(page, '#mindMap .toggle', 1); assert page.locator('#mindMap .node').count() == n
+    deepest = page.evaluate("[...nodesById.values()].reduce((a, b) => b.depth > a.depth ? b : a).id")
+    tap(page, f'#node-{deepest} .title')
+    crumbs = page.locator('#pathBar .crumb')
+    assert crumbs.count() == page.evaluate(f"nodesById.get('{deepest}').depth") + 1
+    assert page.locator(f'#node-{deepest}.selected').count() == 1
+    page.locator('#pathBar .crumb').nth(1).click()
+    sid = page.evaluate("selectedId"); assert sid == crumbs.nth(1).get_attribute('data-id')
+    page.wait_for_timeout(400)
+    b, wr = page.locator(f'#node-{sid}').bounding_box(), page.locator('#mapWrapper').bounding_box()
+    assert wr['x'] <= b['x'] + b['width'] / 2 <= wr['x'] + wr['width'] and wr['y'] <= b['y'] <= wr['y'] + wr['height']
+    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+
+
+@check()
+def check_selection_falls_back_when_hidden(page):
+    deepest = page.evaluate("[...nodesById.values()].reduce((a, b) => b.depth > a.depth ? b : a).id")
+    tap(page, f'#node-{deepest} .title')
+    page.fill('#depthInput', '1')
+    sid = page.evaluate("selectedId")
+    assert page.evaluate(f"nodesById.get('{sid}').depth") == 1 and page.locator(f'#node-{sid}.selected').count() == 1
+
+
+@check()
+def check_link_tap_opens_tab(page):  # Review Focus 5
+    page.evaluate("setMap(parseMap('# R\\n## L\\nsee [docs](https://example.com/)\\n', 'l.md'))")
+    x, y = center(page, '#mindMap .note a')
+    with page.context.expect_page() as popup:  # real mouse click: synthetic events would trip popup blocking
+        page.mouse.click(x, y)
+    assert popup.value.url.startswith('https://example.com')
+
+
 def main():
     flt = sys.argv[1] if len(sys.argv) > 1 else ''
     failed = 0
