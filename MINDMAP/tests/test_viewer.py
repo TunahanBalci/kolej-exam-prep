@@ -407,6 +407,73 @@ def check_save_single_file(page):
     fresh.close()
 
 
+# ---------- Final review fixes ----------
+
+@check('phone', 'desktop')
+def check_fold_keeps_place(page):
+    for idx in (1, 3):  # tapping ± keeps that node where it was on screen
+        nid = page.evaluate(f"document.querySelectorAll('#mindMap .toggle')[{idx}].closest('.node').dataset.id")
+        before = page.locator(f'#node-{nid}').bounding_box()
+        tap(page, '#mindMap .toggle', idx)
+        after = page.locator(f'#node-{nid}').bounding_box()
+        assert abs(after['x'] - before['x']) < 1 and abs(after['y'] - before['y']) < 1, (nid, before, after)
+    for action in ("collapseAll()", "expandAll()", "document.querySelector('#depthInput').value = '1';"
+                   "document.querySelector('#depthInput').dispatchEvent(new Event('input'))"):
+        rb = page.locator('#node-' + page.evaluate("mapRoot.id")).bounding_box()
+        page.evaluate(action)
+        ra = page.locator('#node-' + page.evaluate("mapRoot.id")).bounding_box()
+        assert abs(ra['x'] - rb['x']) < 1 and abs(ra['y'] - rb['y']) < 1, (action, rb, ra)
+
+
+@check()
+def check_export_survives_html_comment(page):
+    text = "# Web Notes\n## Comments\nHTML comments start with `<!--`\n## Scripts\nA `<script>` tag, and `<\\/script>` too\n"
+    html = page.evaluate("t => exportHTML(t, 'web.md')", text)
+    out = write_tmp('web.html', html)
+    p2 = page.context.new_page(); p2.goto(pathlib.Path(out).as_uri()); p2.wait_for_function('window.mindmapReady === true')
+    assert p2.locator('#mindMap .node').count() == 3
+    assert p2.evaluate("readEmbeddedMap().text").strip() == text.strip()
+
+
+@check('phone')
+def check_ios_no_input_zoom_and_toolbar_pinch(page):
+    assert page.evaluate("parseFloat(getComputedStyle(document.querySelector('#depthInput')).fontSize)") >= 16
+    fire = "sel => { const e = new Event('gesturestart', {bubbles: true, cancelable: true}); document.querySelector(sel).dispatchEvent(e); return e.defaultPrevented; }"
+    assert page.evaluate(fire, '#toolbar') is False and page.evaluate(fire, '#mapWrapper') is True
+
+
+@check()
+def check_save_blob_stays_alive(page):  # iOS shows a download sheet; the URL must outlive it
+    page.evaluate("window.__blobs = []; const o = URL.createObjectURL.bind(URL); URL.createObjectURL = b => { const u = o(b); __blobs.push(u); return u; }; 0")
+    with page.expect_download():
+        page.click('#saveBtn')
+    page.wait_for_timeout(1500)
+    assert page.evaluate("fetch(__blobs[0]).then(r => r.ok, () => false)")
+
+
+@check()
+def check_plain_title_keeps_identifiers(page):
+    assert page.evaluate("plainTitle('SCHED_FIFO and pthread_create() **bold** `x` $O(n)$')") == \
+        'SCHED_FIFO and pthread_create() bold x O(n)'
+
+
+@check()
+def check_wheel_zoom(page):
+    wheel = "([dx, dy]) => { const r = document.querySelector('#mapWrapper').getBoundingClientRect(); document.querySelector('#mapWrapper').dispatchEvent(new WheelEvent('wheel', {deltaX: dx, deltaY: dy, clientX: r.left + 200, clientY: r.top + 200, bubbles: true, cancelable: true})); return view.scale; }"
+    assert page.evaluate(wheel, [40, 0]) == 1           # sideways swipe does not zoom
+    assert 0.98 < page.evaluate(wheel, [0, 4]) < 1      # small trackpad step = small zoom
+    assert page.evaluate(wheel, [0, -100]) > 1          # wheel up zooms in
+
+
+@check()
+def check_javascript_links_do_not_run(page):
+    page.evaluate("setMap(parseMap('# R\\n## L\\n[bad](javascript:void(0))\\n', 'l.md'))")
+    x, y = center(page, '#mindMap .note a')
+    page.mouse.click(x, y)
+    page.wait_for_timeout(400)
+    assert len(page.context.pages) == 1
+
+
 def main():
     flt = sys.argv[1] if len(sys.argv) > 1 else ''
     failed = 0

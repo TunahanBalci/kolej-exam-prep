@@ -51,7 +51,7 @@
     .depth { cursor: default; padding: 0 4px 0 12px; }
     .depth input {
       width: 56px; min-height: 44px; border: 0; background: transparent; color: inherit;
-      font: inherit; text-align: center; outline: none;
+      font: inherit; font-size: 16px; text-align: center; outline: none;   /* iOS zooms into inputs under 16px */
     }
     .ic { font-size: 1.05rem; line-height: 1; }
     @media (max-width: 600px) {   /* icons only: 8 × 44px + gaps fit one row on a 390px phone */
@@ -311,7 +311,7 @@ function flatten(root) {
 function readEmbeddedMap() {
   const el = document.getElementById('map-source');
   return {
-    text: el.textContent.replace(/<\\\/script/gi, '</script'),
+    text: el.textContent.replace(/<\\(\\*)(\/script|!--)/gi, '<$1$2'),   // undo exportHTML's escaping
     name: el.dataset.name || 'map.md',
     exported: el.dataset.source === 'export'
   };
@@ -372,7 +372,11 @@ function renderInline(md) {
 }
 
 function plainTitle(md) {
-  return String(md ?? '').replace(/\\[()[\]]/g, '').replace(/[`*_$]/g, '').trim();
+  const s = String(md ?? '').replace(/\\[()[\]]/g, '').replace(/\$/g, '');
+  if (!window.marked) return s.replace(/[`*]/g, '').trim();
+  const t = document.createElement('template');
+  t.innerHTML = marked.parseInline(s);
+  return t.content.textContent.trim();
 }
 
 // ---------- Zig-zag layout ----------
@@ -504,11 +508,24 @@ function buildNode(n) {
   return el;
 }
 
-function renderMap() {
+// anchorId: the node that must not move on screen (the tapped one); defaults to the selection, then the root
+function renderMap(anchorId) {
+  const shown = new Set();
+  (function walk(n) { shown.add(n.id); visibleKids(n).forEach(walk); })(mapRoot);
+  let anchor = nodesById.get(anchorId ?? selectedId) || mapRoot;
+  while (!shown.has(anchor.id)) anchor = nodesById.get(anchor.parentId);
+  const oldEl = $('node-' + anchor.id), before = oldEl && oldEl.getBoundingClientRect();
+
   mindMap.querySelectorAll('.node').forEach(e => e.remove());
   (function add(n) { mindMap.appendChild(buildNode(n)); visibleKids(n).forEach(add); })(mapRoot);
   fitMath();
   layoutNow();
+  if (before) {
+    const after = $('node-' + anchor.id).getBoundingClientRect();
+    view.x += before.left - after.left;
+    view.y += before.top - after.top;
+    applyView();
+  }
   if (resizeObserver) resizeObserver.disconnect();
   resizeObserver = new ResizeObserver(scheduleLayout);
   mindMap.querySelectorAll('.node').forEach(e => resizeObserver.observe(e));
@@ -627,25 +644,29 @@ wrapper.addEventListener('pointercancel', endPointer);
 
 function handleTap(target) {
   const link = target.closest('a[href]');
-  if (link) { window.open(link.href, '_blank', 'noopener'); return; }
+  if (link) {
+    if (/^(https?|mailto):$/i.test(link.protocol)) window.open(link.href, '_blank', 'noopener');
+    return;
+  }
   const node = target.closest('.node');
   if (!node) return;
   if (target.closest('.toggle')) {
     const id = node.dataset.id;
     if (collapsed.has(id)) collapsed.delete(id); else collapsed.add(id);
-    renderMap();
+    renderMap(id);
   } else selectNode(node.dataset.id);
 }
 
 // the tap handler opens links itself; stop the native click from also navigating this page
 wrapper.addEventListener('click', e => { if (e.target.closest('a')) e.preventDefault(); });
 wrapper.addEventListener('dblclick', e => e.preventDefault());
-document.addEventListener('gesturestart', e => e.preventDefault());   // iOS page zoom
+wrapper.addEventListener('gesturestart', e => e.preventDefault());   // iOS page zoom over the map only
 
 wrapper.addEventListener('wheel', e => {
   e.preventDefault();
+  if (!e.deltaY) return;   // sideways swipe
   const r = wrapper.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
-  const s = clampScale(view.scale * (e.deltaY < 0 ? 1.08 : 0.92));
+  const s = clampScale(view.scale * Math.exp(-e.deltaY * (e.deltaMode ? 0.05 : 0.0015)));
   view.x = mx - (mx - view.x) * s / view.scale;
   view.y = my - (my - view.y) * s / view.scale;
   view.scale = s;
@@ -762,7 +783,7 @@ function loadMap(text, name, remember = true) {
 function exportHTML(text, name) {
   const doc = new DOMParser().parseFromString(PRISTINE_HTML, 'text/html');
   const block = doc.getElementById('map-source');
-  block.textContent = '\n' + text.replace(/<\/script/gi, '<\\/script') + '\n';
+  block.textContent = '\n' + text.replace(/<(\\*)(\/script|!--)/gi, '<\\$1$2') + '\n';
   block.dataset.source = 'export';
   block.dataset.name = name;
   return '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
@@ -775,8 +796,7 @@ function saveSingleFile() {
   a.download = name.replace(/\.[^.]*$/, '') + '.html';
   document.body.appendChild(a);
   a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  a.remove();   // the blob URL is never revoked: iOS fetches it only after the user confirms the download
 }
 
 // No accept= filter: iOS can grey out .md files when one is set.
