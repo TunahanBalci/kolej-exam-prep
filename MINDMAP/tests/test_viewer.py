@@ -196,6 +196,84 @@ def check_layout_stress(page):
     assert res['width'] <= 0.7 * res['oldWidth'], (res['width'], res['oldWidth'])
 
 
+# ---------- Task 4: page, rendering, themes, toolbar ----------
+
+@check(*ALL)
+def check_sample_renders(page):
+    assert page.locator('#mindMap .katex').count() > 0
+    assert page.locator('#mindMap .katex-display').count() > 0
+    for lang in ('c', 'python', 'scheme', 'haskell'):
+        assert page.locator(f'#mindMap code.language-{lang} [class^="hljs-"]').count() > 0, lang
+    assert page.locator('#mindMap .note ul').count() > 0 and page.locator('#mindMap .note ol').count() > 0
+    assert page.locator('[contenteditable]').count() == 0
+
+
+@check(*ALL)
+def check_dom_no_overlap_no_hscroll(page):
+    rects = page.evaluate("[...document.querySelectorAll('#mindMap .node')].map(e => {const r = e.getBoundingClientRect(); return [r.left, r.right, r.top, r.bottom]})")
+    assert len(rects) > 5
+    for i, a in enumerate(rects):
+        for b in rects[i+1:]:
+            assert a[1] <= b[0] + 0.5 or b[1] <= a[0] + 0.5 or a[3] <= b[2] + 0.5 or b[3] <= a[2] + 0.5
+    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+
+
+@check(*TOUCH)
+def check_toolbar_touch_targets(page):
+    w = page.viewport_size['width']
+    for el in page.locator('#toolbar button, #toolbar input').all():
+        b = el.bounding_box()
+        assert b and b['height'] >= 44 and b['width'] >= 44 and b['x'] >= 0 and b['x'] + b['width'] <= w
+    t = page.locator('#mindMap .toggle').first.bounding_box()  # at the initial scale of 1
+    assert t['width'] >= 32 and t['height'] >= 32
+
+
+@check(*ALL)
+def check_initial_view(page):
+    assert page.evaluate("view.scale") == 1
+    root = page.locator('#mindMap .node').first.bounding_box()
+    wr = page.locator('#mapWrapper').bounding_box()
+    assert wr['y'] <= root['y'] <= wr['y'] + wr['height'] / 3
+    assert abs((root['x'] + root['width'] / 2) - (wr['x'] + wr['width'] / 2)) < 2
+
+
+@check()
+def check_theme(page):
+    page.emulate_media(color_scheme='light'); page.reload(); page.wait_for_function('window.mindmapReady')
+    assert page.evaluate("document.documentElement.dataset.theme") == 'dark'
+    page.click('#themeBtn')
+    assert page.evaluate("document.documentElement.dataset.theme") == 'light'
+    page.reload(); page.wait_for_function('window.mindmapReady')
+    assert page.evaluate("document.documentElement.dataset.theme") == 'light'
+
+
+@check()
+def check_depth_expand_collapse(page):
+    total = page.locator('#mindMap .node').count()
+    page.fill('#depthInput', '0'); assert page.locator('#mindMap .node').count() == 1
+    page.fill('#depthInput', ''); assert page.locator('#mindMap .node').count() == total
+    page.click('#collapseBtn')
+    assert page.locator('#mindMap .node').count() == 1 + page.evaluate("mapRoot.children.length")
+    page.click('#expandBtn'); assert page.locator('#mindMap .node').count() == total
+
+
+@check()
+def check_works_without_libs(page):
+    ctx = page.context.browser.new_context(**VIEWPORTS['desktop'])
+    ctx.route(re.compile(r'cdn\.jsdelivr\.net|cdnjs\.cloudflare\.com'), lambda r: r.abort())
+    p2 = ctx.new_page(); p2.goto(URL); p2.wait_for_function('window.mindmapReady === true')
+    assert p2.locator('#mindMap .node').count() > 5 and '$' in p2.inner_text('#mindMap')
+    ctx.close()
+
+
+@check('phone')
+def check_long_content_fits(page):  # Review Focus 3
+    page.evaluate("""setMap(parseMap('# R\\n## Long\\nhttps://example.com/' + 'a'.repeat(120) + ' ' + 'x'.repeat(80) +
+        '\\n\\n$$\\\\begin{bmatrix}1&2&3&4&5&6&7&8&9&10&11&12&13&14&15\\\\end{bmatrix}$$\\n', 'l.md'))""")
+    for el in page.locator('#mindMap .node').all():
+        assert el.evaluate("e => e.scrollWidth <= e.clientWidth + 1")
+
+
 def main():
     flt = sys.argv[1] if len(sys.argv) > 1 else ''
     failed = 0

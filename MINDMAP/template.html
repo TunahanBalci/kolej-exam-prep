@@ -11,8 +11,141 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/scheme.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/haskell.min.js"></script>
+  <style>
+    :root, [data-theme="dark"] {
+      --page: #070b14; --grid: rgba(148, 163, 184, 0.07);
+      --bar: #0f1524; --bar-border: #1f2937; --btn: #1e293b; --btn-border: rgba(148, 163, 184, 0.3);
+      --card: #151b2b; --card-border: rgba(148, 163, 184, 0.25); --card-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      --text: #e5e7eb; --muted: #94a3b8;
+      --c-root: #60a5fa; --c-1: #34d399; --c-2: #fbbf24; --c-3: #a78bfa; --c-4: #fb7185; --c-5: #22d3ee;
+    }
+    [data-theme="light"] {
+      --page: #f5f3ee; --grid: rgba(120, 113, 108, 0.08);
+      --bar: #fffdf7; --bar-border: #e7e2d3; --btn: #f1ede3; --btn-border: #ddd6c4;
+      --card: #fffdf7; --card-border: #e7e2d3; --card-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+      --text: #1f2937; --muted: #6b7280;
+      --c-root: #1d4ed8; --c-1: #047857; --c-2: #92400e; --c-3: #6d28d9; --c-4: #be123c; --c-5: #0e7490;
+    }
+    .root { --c: var(--c-root); } .branch-1 { --c: var(--c-1); } .branch-2 { --c: var(--c-2); }
+    .branch-3 { --c: var(--c-3); } .branch-4 { --c: var(--c-4); } .branch-5 { --c: var(--c-5); }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      display: flex; flex-direction: column; height: 100dvh; overflow: hidden;
+      background: var(--page); color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+
+    #toolbar {
+      display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px;
+      padding: 8px; padding-top: max(8px, env(safe-area-inset-top));
+      background: var(--bar); border-bottom: 1px solid var(--bar-border);
+    }
+    #toolbar button, .depth {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      min-width: 44px; min-height: 44px; padding: 0 12px; border-radius: 12px;
+      background: var(--btn); color: var(--text); border: 1px solid var(--btn-border);
+      font: inherit; font-size: 0.9rem; font-weight: 600; cursor: pointer;
+    }
+    .depth { cursor: default; padding: 0 4px 0 12px; }
+    .depth input {
+      width: 56px; min-height: 44px; border: 0; background: transparent; color: inherit;
+      font: inherit; text-align: center; outline: none;
+    }
+    .ic { font-size: 1.05rem; line-height: 1; }
+    @media (max-width: 600px) {   /* icons only: 8 × 44px + gaps fit one row on a 390px phone */
+      #toolbar { gap: 3px; }
+      #toolbar .lbl { display: none; }
+      #toolbar button, .depth { padding: 0; }
+      .depth input { width: 42px; }   /* + 2px border = 44px */
+    }
+
+    #mapWrapper {
+      position: relative; flex: 1; overflow: hidden; touch-action: none; cursor: grab;
+      background-image:
+        linear-gradient(var(--grid) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+      background-size: 32px 32px;
+    }
+    #mapStage { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
+    #mindMap { position: relative; }
+    #connections { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+    #connections path { fill: none; stroke: var(--c); stroke-width: 3; stroke-linecap: round; opacity: 0.6; }
+
+    .node {
+      position: absolute; width: 300px; padding: 14px 16px 14px 16px;
+      background: var(--card); border: 1px solid var(--card-border); border-left: 5px solid var(--c);
+      border-radius: 14px; box-shadow: var(--card-shadow); color: var(--text); text-align: left;
+      user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+    }
+    .node.root { width: 340px; }
+    .node.code-node { width: 420px; }
+    .node-header { display: flex; align-items: flex-start; gap: 8px; }
+    .title { flex: 1; min-width: 0; color: var(--c); font-weight: 700; font-size: 1.05rem; line-height: 1.3; overflow-wrap: anywhere; }
+    .node.root .title { font-size: 1.2rem; }
+    .toggle {
+      flex: 0 0 auto; width: 32px; height: 32px; margin: -4px 0 -4px -4px; padding: 0;
+      display: inline-grid; place-items: center; border-radius: 999px;
+      border: 1.5px solid var(--c); background: transparent; color: var(--c);
+      font: 700 1.1rem/1 system-ui, sans-serif; cursor: pointer;
+    }
+    .note { margin-top: 8px; font-size: 0.95rem; line-height: 1.6; overflow-wrap: anywhere; }
+    .note > :first-child { margin-top: 0; }
+    .note > :last-child { margin-bottom: 0; }
+    .note p { margin: 0 0 8px; }
+    .note ul, .note ol { margin: 6px 0 8px; padding-left: 1.3rem; }
+    .note li { margin: 3px 0; }
+    .note li::marker { color: var(--c); font-weight: 700; }
+    .note a { color: var(--c); }
+    .note :not(pre) > code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.88em;
+      padding: 1px 5px; border-radius: 5px; background: rgba(148, 163, 184, 0.16);
+    }
+    .katex-display { margin: 8px 0; overflow: hidden; }
+
+    .code-card {
+      margin: 8px 0; border-radius: 12px; overflow: hidden; background: #0b1120;
+      border: 1px solid rgba(148, 163, 184, 0.28);
+    }
+    .code-top {
+      display: flex; align-items: center; gap: 6px; padding: 6px 10px;
+      background: #111827; border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+      color: #cbd5e1; font-size: 0.7rem; font-weight: 700;
+    }
+    .dot { width: 9px; height: 9px; border-radius: 999px; background: rgba(148, 163, 184, 0.55); }
+    .code-lang { margin-left: auto; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .code-card pre { margin: 0; }
+    .code-card code.hljs {
+      display: block; padding: 12px 13px; background: transparent; color: #e5e7eb;
+      font: 0.8rem/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 4;
+    }
+  </style>
 </head>
 <body>
+
+<div id="toolbar">
+  <button id="openBtn" type="button" aria-label="Open map file"><span class="ic">📂</span><span class="lbl">Open</span></button>
+  <button id="saveBtn" type="button" aria-label="Save as single file"><span class="ic">💾</span><span class="lbl">Save</span></button>
+  <button id="expandBtn" type="button" aria-label="Expand all"><span class="ic">⊞</span><span class="lbl">Expand</span></button>
+  <button id="collapseBtn" type="button" aria-label="Collapse all"><span class="ic">⊟</span><span class="lbl">Collapse</span></button>
+  <button id="fitBtn" type="button" aria-label="Fit to view"><span class="ic">⤢</span><span class="lbl">Fit</span></button>
+  <button id="resetBtn" type="button" aria-label="Reset view"><span class="ic">⟲</span><span class="lbl">Reset</span></button>
+  <label class="depth" title="Depth limit: empty = all levels, 0 = centre only">
+    <span class="lbl">Depth</span>
+    <input id="depthInput" type="number" inputmode="numeric" min="0" max="99" step="1" placeholder="All" aria-label="Depth limit" />
+  </label>
+  <button id="themeBtn" type="button" aria-label="Switch theme"><span class="ic">◐</span><span class="lbl">Theme</span></button>
+</div>
+<nav id="pathBar" aria-label="Path to selected node"></nav>
+<section id="mapWrapper" aria-label="Mind map">
+  <div id="mapStage">
+    <div id="mindMap"><svg id="connections" aria-hidden="true"></svg></div>
+  </div>
+</section>
+<div id="toast" role="status" hidden></div>
+<input id="fileInput" type="file" hidden />
 
 <!--
   MAP SOURCE. The map is plain Markdown:
@@ -297,6 +430,165 @@ function layoutTree(root, kids, size) {
     height: bands.at(-1).bottom + MARGIN
   };
 }
+
+// ---------- Map state, rendering and view ----------
+
+const MIN_SCALE = 0.25, MAX_SCALE = 2.5;
+const $ = id => document.getElementById(id);
+const wrapper = $('mapWrapper'), stage = $('mapStage'), mindMap = $('mindMap'), svg = $('connections');
+
+let mapRoot = null, nodesById = new Map(), collapsed = new Set(), maxDepth = Infinity, selectedId = null;
+let view = { x: 0, y: 0, scale: 1 };
+let lastLayout = null, layoutQueued = false, resizeObserver = null;
+
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch { /* storage unavailable: nothing to remember */ } }
+};
+
+const visibleKids = n => (collapsed.has(n.id) || n.depth >= maxDepth) ? [] : n.children;
+
+function setMap(root) {
+  mapRoot = root;
+  nodesById = new Map(flatten(root).map(n => [n.id, n]));
+  for (const n of nodesById.values()) {
+    n.titleHtml = renderInline(n.title);
+    n.bodyHtml = renderMarkdown(n.body);
+  }
+  collapsed = new Set();
+  selectedId = null;
+  document.title = plainTitle(root.title) || 'Mind Map';
+  renderMap();
+  resetView();
+}
+
+function buildNode(n) {
+  const el = document.createElement('article');
+  el.className = `node ${n.color}` + (/^\s*(```|~~~)/m.test(n.body) ? ' code-node' : '');
+  el.id = 'node-' + n.id;
+  el.dataset.id = n.id;
+  const shut = collapsed.has(n.id);
+  const toggle = n.children.length && n.depth < maxDepth
+    ? `<button class="toggle" type="button" aria-label="${shut ? 'Expand' : 'Collapse'} branch">${shut ? '+' : '−'}</button>` : '';
+  el.innerHTML = `<div class="node-header">${toggle}<div class="title">${n.titleHtml}</div></div>` +
+    (n.bodyHtml ? `<div class="note">${n.bodyHtml}</div>` : '');
+  return el;
+}
+
+function renderMap() {
+  mindMap.querySelectorAll('.node').forEach(e => e.remove());
+  (function add(n) { mindMap.appendChild(buildNode(n)); visibleKids(n).forEach(add); })(mapRoot);
+  fitMath();
+  layoutNow();
+  if (resizeObserver) resizeObserver.disconnect();
+  resizeObserver = new ResizeObserver(scheduleLayout);
+  mindMap.querySelectorAll('.node').forEach(e => resizeObserver.observe(e));
+}
+
+// Shrink display math that is wider than its card instead of letting it spill or scroll.
+function fitMath() {
+  mindMap.querySelectorAll('.katex-display').forEach(el => {
+    el.style.fontSize = '';
+    if (el.scrollWidth > el.clientWidth + 1) el.style.fontSize = (el.clientWidth / el.scrollWidth).toFixed(3) + 'em';
+  });
+}
+
+function scheduleLayout() {
+  if (layoutQueued) return;
+  layoutQueued = true;
+  requestAnimationFrame(() => { layoutQueued = false; layoutNow(); });
+}
+
+function layoutNow() {
+  if (!mapRoot) return;
+  const sizes = new Map();
+  mindMap.querySelectorAll('.node').forEach(e => sizes.set(e.dataset.id, { w: e.offsetWidth, h: e.offsetHeight, el: e }));
+  const L = layoutTree(mapRoot, visibleKids, n => sizes.get(n.id));
+  for (const [id, p] of L.pos) {
+    const s = sizes.get(id);
+    s.el.style.left = (p.x - s.w / 2) + 'px';
+    s.el.style.top = p.y + 'px';
+  }
+  mindMap.style.width = stage.style.width = L.width + 'px';
+  mindMap.style.height = stage.style.height = L.height + 'px';
+  drawConnections(L, sizes);
+  lastLayout = L;
+}
+
+// Straight down out of the parent's level, curve in the gap between levels, straight down into the child.
+// The layout keeps lanes free for both straight parts.
+function drawConnections(L, sizes) {
+  svg.setAttribute('width', L.width);
+  svg.setAttribute('height', L.height);
+  const paths = [];
+  for (const [id, c] of L.pos) {
+    const n = nodesById.get(id);
+    if (!n.parentId) continue;
+    const p = L.pos.get(n.parentId);
+    const yA = L.levels[n.depth - 1].bottom, yB = L.levels[n.depth].top, ym = (yA + yB) / 2;
+    paths.push(`<path class="${n.color}" d="M ${p.x} ${p.y + sizes.get(n.parentId).h} L ${p.x} ${yA} ` +
+      `C ${p.x} ${ym}, ${c.x} ${ym}, ${c.x} ${yB} L ${c.x} ${c.y}"/>`);
+  }
+  svg.innerHTML = paths.join('');
+}
+
+function applyView() {
+  stage.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.scale})`;
+}
+
+const clampScale = s => Math.min(MAX_SCALE, Math.max(MIN_SCALE, s));
+
+// Root at reading size, centred at the top: readable straight away instead of a tiny whole-tree view.
+function resetView() {
+  const root = lastLayout && lastLayout.pos.get(mapRoot.id);
+  view = { scale: 1, x: wrapper.clientWidth / 2 - (root ? root.x : 0), y: 24 };
+  applyView();
+}
+
+function fitToView() {
+  const pad = 24, w = mindMap.offsetWidth, h = mindMap.offsetHeight;
+  const s = clampScale(Math.min((wrapper.clientWidth - 2 * pad) / w, (wrapper.clientHeight - 2 * pad) / h, 1));
+  view = { scale: s, x: (wrapper.clientWidth - w * s) / 2, y: pad };
+  applyView();
+}
+
+function expandAll() {
+  collapsed.clear();
+  renderMap();
+}
+
+function collapseAll() {
+  collapsed = new Set([...nodesById.values()].filter(n => n.parentId && n.children.length).map(n => n.id));
+  renderMap();
+}
+
+function setTheme(t) {
+  document.documentElement.dataset.theme = t;
+  store.set('mindmap-theme', t);
+}
+
+// ---------- Toolbar ----------
+
+$('expandBtn').addEventListener('click', expandAll);
+$('collapseBtn').addEventListener('click', collapseAll);
+$('fitBtn').addEventListener('click', fitToView);
+$('resetBtn').addEventListener('click', resetView);
+$('themeBtn').addEventListener('click', () =>
+  setTheme(document.documentElement.dataset.theme === 'light' ? 'dark' : 'light'));
+$('depthInput').addEventListener('input', e => {
+  const v = e.target.value.trim();
+  maxDepth = v === '' ? Infinity : Math.max(0, Math.floor(Number(v) || 0));
+  renderMap();
+});
+
+// ---------- Startup ----------
+
+document.documentElement.dataset.theme = store.get('mindmap-theme') === 'light' ? 'light' : 'dark';
+{
+  const src = readEmbeddedMap();
+  setMap(parseMap(src.text, src.name));
+}
+if (document.fonts) document.fonts.ready.then(() => { fitMath(); scheduleLayout(); });
 
 window.mindmapReady = true;
 </script>
