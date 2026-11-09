@@ -94,6 +94,13 @@
     .sep { color: var(--muted); opacity: 0.6; }
     .node.selected { outline: 3px solid var(--c); outline-offset: 3px; }
 
+    #toast {
+      position: fixed; left: 50%; bottom: max(20px, env(safe-area-inset-bottom)); transform: translateX(-50%);
+      z-index: 10; max-width: min(90vw, 480px); padding: 10px 16px; border-radius: 12px;
+      background: var(--bar); color: var(--text); border: 1px solid var(--c-4); box-shadow: var(--card-shadow);
+      font-size: 0.9rem;
+    }
+
     .node {
       position: absolute; width: 300px; padding: 14px 16px 14px 16px;
       background: var(--card); border: 1px solid var(--card-border); border-left: 5px solid var(--c);
@@ -304,7 +311,7 @@ function flatten(root) {
 function readEmbeddedMap() {
   const el = document.getElementById('map-source');
   return {
-    text: el.textContent.replaceAll('<\\/script', '</script'),
+    text: el.textContent.replace(/<\\\/script/gi, '</script'),
     name: el.dataset.name || 'map.md',
     exported: el.dataset.source === 'export'
   };
@@ -727,6 +734,60 @@ function setTheme(t) {
   store.set('mindmap-theme', t);
 }
 
+// ---------- Open, remember, save as single file ----------
+
+let currentSource = null;
+
+function showToast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.hidden = false;
+  clearTimeout(showToast.timer);
+  showToast.timer = setTimeout(() => { t.hidden = true; }, 4000);
+}
+
+function loadMap(text, name, remember = true) {
+  const root = parseMap(text, name);
+  if (!root) {
+    showToast(`No headings found in ${name} — map not changed.`);
+    return false;
+  }
+  currentSource = { text, name };
+  setMap(root);
+  if (remember) store.set('mindmap-last', JSON.stringify({ name, text }));
+  return true;
+}
+
+// This viewer with the map baked into its Markdown block: one file that opens anywhere, no storage needed.
+function exportHTML(text, name) {
+  const doc = new DOMParser().parseFromString(PRISTINE_HTML, 'text/html');
+  const block = doc.getElementById('map-source');
+  block.textContent = '\n' + text.replace(/<\/script/gi, '<\\/script') + '\n';
+  block.dataset.source = 'export';
+  block.dataset.name = name;
+  return '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+}
+
+function saveSingleFile() {
+  const { text, name } = currentSource;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([exportHTML(text, name)], { type: 'text/html' }));
+  a.download = name.replace(/\.[^.]*$/, '') + '.html';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+// No accept= filter: iOS can grey out .md files when one is set.
+$('openBtn').addEventListener('click', () => $('fileInput').click());
+$('fileInput').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  e.target.value = '';   // so the same file can be opened again
+  if (file) loadMap(await file.text(), file.name);
+});
+$('saveBtn').addEventListener('click', saveSingleFile);
+
 // ---------- Toolbar ----------
 
 $('expandBtn').addEventListener('click', expandAll);
@@ -745,8 +806,16 @@ $('depthInput').addEventListener('input', e => {
 
 document.documentElement.dataset.theme = store.get('mindmap-theme') === 'light' ? 'light' : 'dark';
 {
-  const src = readEmbeddedMap();
-  setMap(parseMap(src.text, src.name));
+  // an exported single file shows its own map; otherwise the last opened map; otherwise the sample
+  const embedded = readEmbeddedMap();
+  let src = embedded;
+  if (!embedded.exported) {
+    try {
+      const last = JSON.parse(store.get('mindmap-last'));
+      if (last && typeof last.text === 'string') src = last;
+    } catch { /* nothing usable remembered */ }
+  }
+  if (!loadMap(src.text, src.name || 'map.md', false)) loadMap(embedded.text, embedded.name, false);
 }
 if (document.fonts) document.fonts.ready.then(() => { fitMath(); scheduleLayout(); });
 

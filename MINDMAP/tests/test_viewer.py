@@ -360,6 +360,53 @@ def check_link_tap_opens_tab(page):  # Review Focus 5
     assert popup.value.url.startswith('https://example.com')
 
 
+# ---------- Task 6: open, remember, save ----------
+
+MAP_A = "# Alpha Map\n## One\n$x^2$\n```c\nint a;\n```\n"
+MAP_B = "# Beta Map\n## Two\n"
+
+
+def write_tmp(name, text):
+    p = pathlib.Path(tempfile.mkdtemp()) / name; p.write_text(text); return str(p)
+
+
+def root_title(page): return page.locator('#mindMap .node .title').first.inner_text()
+
+
+@check(*ALL)
+def check_open_and_remember(page):
+    page.set_input_files('#fileInput', write_tmp('alpha.md', MAP_A))
+    page.wait_for_function("document.querySelector('#mindMap .node .title').textContent.includes('Alpha')")
+    page.reload(); page.wait_for_function('window.mindmapReady')
+    assert root_title(page) == 'Alpha Map'
+
+
+@check()
+def check_open_bad_file(page):
+    page.set_input_files('#fileInput', write_tmp('alpha.md', MAP_A))
+    page.wait_for_function("document.querySelector('#mindMap .node .title').textContent.includes('Alpha')")
+    page.set_input_files('#fileInput', write_tmp('bad.md', "no headings at all\n"))
+    page.wait_for_selector('#toast', state='visible')
+    assert 'No headings' in page.inner_text('#toast') and root_title(page) == 'Alpha Map'
+
+
+@check('phone', 'desktop')
+def check_save_single_file(page):
+    page.set_input_files('#fileInput', write_tmp('alpha.md', MAP_A + "\n</script> stays text\n"))
+    page.wait_for_function("document.querySelector('#mindMap .node .title').textContent.includes('Alpha')")
+    with page.expect_download() as dl:
+        page.click('#saveBtn')
+    assert dl.value.suggested_filename == 'alpha.html'
+    out = write_tmp('alpha.html', ''); dl.value.save_as(out)
+    fresh = page.context.browser.new_context(**VIEWPORTS['desktop'])  # empty storage
+    p2 = fresh.new_page(); p2.goto(pathlib.Path(out).as_uri()); p2.wait_for_function('window.mindmapReady')
+    assert root_title(p2) == 'Alpha Map' and p2.locator('#mindMap .katex').count() > 0
+    assert p2.locator('#mindMap code [class^="hljs-"]').count() > 0
+    p2.set_input_files('#fileInput', write_tmp('beta.md', MAP_B))
+    p2.wait_for_function("document.querySelector('#mindMap .node .title').textContent.includes('Beta')")
+    fresh.close()
+
+
 def main():
     flt = sys.argv[1] if len(sys.argv) > 1 else ''
     failed = 0
