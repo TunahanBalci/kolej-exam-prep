@@ -155,6 +155,64 @@ function readEmbeddedMap() {
   };
 }
 
+// ---------- Markdown, math and code rendering ----------
+
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[c]);
+}
+
+// Group 1 passes code (and escaped \$) through untouched; the rest is math.
+// Inline $…$ follows Pandoc's rule so prose like "$5 and $10" stays text.
+const MATH_RE = /(```[\s\S]*?```|~~~[\s\S]*?~~~|`[^`\n]*`|\\\$)|\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\]|\\\(([\s\S]+?)\\\)|\$(?=[^\s$`])([^$`\n]*?[^\s`])\$(?!\d)/g;
+
+function protectMath(md) {
+  const math = [];
+  const text = md.replace(MATH_RE, (m, code, d1, d2, i1, i2) => {
+    if (code) return m;
+    math.push({ tex: d1 ?? d2 ?? i1 ?? i2, display: d1 != null || d2 != null });
+    return `MATHTOKEN${math.length - 1}X`;
+  });
+  return { text, restore: html => html.replace(/MATHTOKEN(\d+)X/g, (_, i) => renderTex(math[i])) };
+}
+
+function renderTex({ tex, display }) {
+  if (!window.katex) return esc(display ? `$$${tex}$$` : `$${tex}$`);
+  return katex.renderToString(tex, { displayMode: display, throwOnError: false });
+}
+
+if (window.marked) {
+  marked.use({
+    renderer: {
+      html: ({ text }) => esc(text),   // raw HTML in a map is shown, never run
+      code({ text, lang }) {
+        const l = String(lang || '').trim().split(/\s+/)[0].toLowerCase() || 'text';
+        const body = window.hljs && hljs.getLanguage(l) ? hljs.highlight(text, { language: l }).value : esc(text);
+        return `<div class="code-card"><div class="code-top"><span class="dot"></span><span class="dot"></span>` +
+          `<span class="dot"></span><span class="code-lang">${esc(l)}</span></div>` +
+          `<pre><code class="hljs language-${esc(l)}">${body}</code></pre></div>`;
+      }
+    }
+  });
+}
+
+function renderMarkdown(md) {
+  const src = String(md ?? '').trim();
+  if (!src) return '';
+  if (!window.marked) return '<p>' + esc(src).replace(/\n/g, '<br>') + '</p>';
+  const { text, restore } = protectMath(src);
+  return restore(marked.parse(text));
+}
+
+function renderInline(md) {
+  if (!window.marked) return esc(md);
+  const { text, restore } = protectMath(String(md ?? ''));
+  return restore(marked.parseInline(text));
+}
+
+function plainTitle(md) {
+  return String(md ?? '').replace(/\\[()[\]]/g, '').replace(/[`*_$]/g, '').trim();
+}
+
 window.mindmapReady = true;
 </script>
 </body>

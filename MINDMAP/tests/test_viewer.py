@@ -100,6 +100,41 @@ def launch(bt):
         return bt.launch(executable_path=str(builds[-1]))
 
 
+# ---------- Task 2: markdown / math / code ----------
+
+def md(page, s):
+    return page.evaluate("s => renderMarkdown(s)", s)
+
+
+@check()
+def check_render_math(page):
+    h = md(page, "Inline $a_b$ and display $$\\frac{1}{n}\\sum_i W_i$$ and \\(x^2\\) and \\[y\\]")
+    assert h.count('class="katex"') >= 4 and 'katex-display' in h and '<em>' not in h
+
+
+@check()
+def check_render_dollars_literal(page):  # Review Focus 1
+    h = md(page, "costs $5 and $10, code `$x$`")
+    assert 'katex' not in h and '$5 and $10' in h and '<code>$x$</code>' in h
+
+
+@check()
+def check_render_code(page):
+    h = md(page, "```scheme\n(define (sq x) (* x x))\n```")
+    assert 'code-card' in h and '>scheme<' in h and 'hljs-' in h
+    for lang, src in [('c', 'int main(void) { return 0; }'), ('python', 'def f(x):\n    return x'),
+                      ('haskell', 'sq :: Int -> Int\nsq x = x * x'), ('java', 'class A { int x; }')]:
+        assert 'hljs-' in md(page, f"```{lang}\n{src}\n```"), lang
+
+
+@check()
+def check_render_lists_and_html(page):
+    h = md(page, "- a\n- b\n\n1. one\n2. two\n\n<script>alert(1)</script> <b>x</b>")
+    assert '<ul>' in h and '<ol>' in h
+    assert '<script' not in h and '&lt;script&gt;' in h and '&lt;b&gt;' in h
+    assert page.evaluate("plainTitle('**Big** $O(n)$ `x`')") == 'Big O(n) x'
+
+
 def main():
     flt = sys.argv[1] if len(sys.argv) > 1 else ''
     failed = 0
